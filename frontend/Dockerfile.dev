@@ -8,10 +8,10 @@ WORKDIR /app
 
 # package.jsonとlockファイルを先にコピー
 # これらに変更がない限り、以下のRUN npm installはキャッシュが利用されます
-COPY package*.json ./
+#COPY package*.json ./
 
 # 依存パッケージをインストール
-RUN npm install
+#RUN npm install
 
 # アプリケーションのコード全体をコピー
 COPY . .
