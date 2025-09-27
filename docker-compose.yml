@@ -11,7 +11,7 @@ services:
     build:
       #context: ./db
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./db/Dockerfile
     # データ永続化のための名前付きボリューム
     # コンテナを削除してもデータが消えないようにします
     volumes:
