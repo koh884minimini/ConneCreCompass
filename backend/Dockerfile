@@ -12,10 +12,10 @@ WORKDIR /myapp
 
 # GemfileとGemfile.lockを先にコピー
 # Gemfileに変更がない限り、以下のRUN bundle installはキャッシュが利用されます
-COPY Gemfile Gemfile.lock ./
+#COPY Gemfile Gemfile.lock ./
 
 # gemをインストール
-RUN bundle install
+#RUN bundle install
 
 # アプリケーションのコード全体をコピー
 COPY . .
