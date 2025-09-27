@@ -1,0 +1,91 @@
+# Docker Composeのファイルバージョンを指定
+version: '3.8'
+
+# 各コンテナ（サービス）を定義
+services:
+  # ------------------------------------
+  # DB (MySQL) サービス
+  # ------------------------------------
+  db:
+    # dbディレクトリにあるDockerfileを使用してイメージをビルド
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    # データ永続化のための名前付きボリューム
+    # コンテナを削除してもデータが消えないようにします
+    volumes:
+      - db_data:/var/lib/mysql
+    # 環境変数を.env.developmentファイルから読み込む
+    env_file:
+      - ./.env.development
+    # ポートマッピング: ホストの3306番ポートをコンテナの3306番ポートに接続
+    # これにより、ローカルPCからDBに接続できます
+    ports:
+      - "3306:3306"
+    # ヘルスチェック
+    # DBが正常に起動したかをDockerが確認できるようにします
+    # これにより、RailsアプリがDB起動前に接続しようとしてエラーになるのを防ぎます [cite: 467, 738]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  # ------------------------------------
+  # バックエンド (Rails) サービス
+  # ------------------------------------
+  web:
+    # backendディレクトリにあるDockerfileを使用してイメージをビルド
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    # 起動コマンド
+    # server.pidが残っていると起動に失敗するため、起動前に削除します [cite: 446, 740]
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3001 -b '0.0.0.0'"
+    # ホストのbackendディレクトリをコンテナの/myappにマウント
+    # これにより、コードの変更が即座にコンテナ内に反映されます
+    volumes:
+      - ./backend:/myapp
+    # ポートマッピング: ホストの3001番をコンテナの3001番に接続
+    ports:
+      - "3001:3001"
+    # 環境変数を.env.developmentファイルから読み込む
+    env_file:
+      - ./.env.development
+    # 依存関係
+    # webサービスはdbサービスが起動してから起動します
+    depends_on:
+      db:
+        condition: service_healthy # dbのヘルスチェックが通ったら起動
+
+  # ------------------------------------
+  # フロントエンド (React) サービス
+  # ------------------------------------
+  frontend:
+    # frontendディレクトリにあるDockerfileを使用してイメージをビルド
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    # ホストのfrontendディレクトリをコンテナの/appにマウント
+    volumes:
+      - ./frontend:/app
+    # 起動スクリプトを指定
+    # 複雑な起動ロジックはスクリプトに分離するのが堅牢な方法です [cite: 451, 470]
+    entrypoint: ["./entrypoint.sh"]
+    # ポートマッピング: ホストの3000番をコンテナの3000番に接続
+    ports:
+      - "3000:3000"
+    # 環境変数を.env.developmentファイルから読み込む
+    env_file:
+      - ./.env.development
+    # 依存関係
+    # frontendサービスはwebサービスが起動してから起動します
+    depends_on:
+      - web
+
+# ------------------------------------
+# ボリューム定義
+# ------------------------------------
+volumes:
+  # DBデータ永続化用の名前付きボリューム
+  db_data:
