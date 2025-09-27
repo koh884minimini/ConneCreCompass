@@ -9,7 +9,8 @@ services:
   db:
     # dbディレクトリにあるDockerfileを使用してイメージをビルド
     build:
-      context: ./db
+      #context: ./db
+      context: .
       dockerfile: Dockerfile
     # データ永続化のための名前付きボリューム
     # コンテナを削除してもデータが消えないようにします
