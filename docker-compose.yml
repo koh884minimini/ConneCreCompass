@@ -42,7 +42,9 @@ services:
       dockerfile: Dockerfile
     # 起動コマンド
     # server.pidが残っていると起動に失敗するため、起動前に削除します [cite: 446, 740]
-    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3001 -b '0.0.0.0'"
+    #command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3001 -b '0.0.0.0'"
+    command: sleep infinity
+
     # ホストのbackendディレクトリをコンテナの/myappにマウント
     # これにより、コードの変更が即座にコンテナ内に反映されます
     volumes:
