@@ -1,19 +1,4 @@
 {
-  "name": "Co-creation Compass Dev",
-  "dockerComposeFile": [
-    "../docker-compose.yml"
-  ],
-  "service": "web",
-  "workspaceFolder": "/myapp",
-  "portsAttributes": {
-    "3000": {
-      "label": "Frontend (React)",
-      "onAutoForward": "openBrowser"
-    },
-    "3001": {
-      "label": "Backend (Rails)",
-      "onAutoForward": "notify"
-    }
-  },
-  "remoteUser": "root"
+  "name": "Recovery Environment",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu"
 }
