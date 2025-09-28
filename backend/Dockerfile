@@ -1,26 +1,69 @@
-# backend/Dockerfile
+# syntax=docker/dockerfile:1
+# check=error=true
 
-# ベースとなる公式Rubyイメージを指定
-FROM ruby:3.2
+# This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
+# docker build -t myapp .
+# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name myapp myapp
 
-# 必要なライブラリをインストール
-# (nokogiriなど、C拡張を必要とするgemのために必要です)
-RUN apt-get update -qq && apt-get install -y build-essential
+# For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
-# 作業ディレクトリを作成・指定
-WORKDIR /myapp
+# Make sure RUBY_VERSION matches the Ruby version in .ruby-version
+ARG RUBY_VERSION=3.2.9
+FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
 
-# GemfileとGemfile.lockを先にコピー
-# Gemfileに変更がない限り、以下のRUN bundle installはキャッシュが利用されます
-#COPY Gemfile Gemfile.lock ./
+# Rails app lives here
+WORKDIR /rails
 
-# gemをインストール
-#RUN bundle install
+# Install base packages
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y curl default-mysql-client libjemalloc2 libvips && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-# アプリケーションのコード全体をコピー
+# Set production environment
+ENV RAILS_ENV="production" \
+    BUNDLE_DEPLOYMENT="1" \
+    BUNDLE_PATH="/usr/local/bundle" \
+    BUNDLE_WITHOUT="development"
+
+# Throw-away build stage to reduce size of final image
+FROM base AS build
+
+# Install packages needed to build gems
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential default-libmysqlclient-dev git libyaml-dev pkg-config && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+# Install application gems
+COPY Gemfile Gemfile.lock ./
+RUN bundle install && \
+    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
+    bundle exec bootsnap precompile --gemfile
+
+# Copy application code
 COPY . .
 
-# コンテナが起動したときに実行されるデフォルトのコマンド
-# docker-compose.ymlのcommandで上書きされますが、念のため定義しておきます。
-# server.pidの削除と、すべてのIPアドレスからのアクセスを許可(-b '0.0.0.0')がポイントです [cite: 588, 628]。
-CMD ["bash", "-c", "rm -f tmp/pids/server.pid && bundle exec rails s -p 3001 -b '0.0.0.0'"]
+# Precompile bootsnap code for faster boot times
+RUN bundle exec bootsnap precompile app/ lib/
+
+
+
+
+# Final stage for app image
+FROM base
+
+# Copy built artifacts: gems, application
+COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
+COPY --from=build /rails /rails
+
+# Run and own only the runtime files as a non-root user for security
+RUN groupadd --system --gid 1000 rails && \
+    useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
+    chown -R rails:rails db log storage tmp
+USER 1000:1000
+
+# Entrypoint prepares the database.
+ENTRYPOINT ["/rails/bin/docker-entrypoint"]
+
+# Start server via Thruster by default, this can be overwritten at runtime
+EXPOSE 80
+CMD ["./bin/thrust", "./bin/rails", "server"]
