@@ -64,5 +64,5 @@
   // "postCreateCommand": "echo 'Codespace created! Run bundle install and npm install manually.'",
 
   // VS CodeのターミナルをCodespacesに接続したユーザーで実行
-  "remoteUser": "vscode"
+  "remoteUser": "root"
 }
