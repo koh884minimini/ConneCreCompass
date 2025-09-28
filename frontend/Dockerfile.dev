@@ -1,21 +1,7 @@
 # frontend/Dockerfile.dev
-
-# ベースとなる公式Node.jsイメージを指定 (軽量なalpine版を推奨)
 FROM node:18-alpine
-
-# 作業ディレクトリを作成・指定
 WORKDIR /app
-
-# package.jsonとlockファイルを先にコピー
-# これらに変更がない限り、以下のRUN npm installはキャッシュが利用されます
-#COPY package*.json ./
-
-# 依存パッケージをインストール
-#RUN npm install
-
-# アプリケーションのコード全体をコピー
+COPY package*.json ./
+RUN npm install
 COPY . .
-
-# デフォルトのコマンド
-# この設定はdocker-compose.ymlのentrypointで上書きされます [cite: 647]。
 CMD ["npm", "start"]
